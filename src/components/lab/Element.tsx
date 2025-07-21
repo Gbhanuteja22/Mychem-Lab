@@ -43,7 +43,7 @@ export default function Element({ symbol, name, color, safetyLevel, atomicNumber
       <div className="absolute top-1 left-1 text-xs text-gray-500">
         {atomicNumber}
       </div>
-
+      
       {/* Safety indicator */}
       <div className={`absolute top-1 right-1 text-xs ${
         safetyLevel === 'safe' ? 'text-green-600' : 
@@ -51,7 +51,7 @@ export default function Element({ symbol, name, color, safetyLevel, atomicNumber
       }`}>
         {safetyIcons[safetyLevel]}
       </div>
-
+      
       {/* Element Symbol */}
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
@@ -63,12 +63,12 @@ export default function Element({ symbol, name, color, safetyLevel, atomicNumber
           </div>
         </div>
       </div>
-
+      
       {/* Element Name */}
       <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-center text-gray-600 whitespace-nowrap">
         {name}
       </div>
-
+      
       {/* Visual element representation */}
       <div 
         className="absolute inset-2 rounded-lg opacity-20"

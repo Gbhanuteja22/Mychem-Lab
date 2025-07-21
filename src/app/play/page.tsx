@@ -16,6 +16,11 @@ interface ElementData {
   safetyLevel: 'safe' | 'caution' | 'dangerous'
 }
 
+interface SelectedElementWithMolecules {
+  element: string
+  molecules: number
+}
+
 interface ReactionResult {
   compoundName: string
   chemicalFormula: string
@@ -28,7 +33,7 @@ interface ReactionResult {
 
 export default function PlayModePage() {
   const [elements, setElements] = useState<ElementData[]>([])
-  const [beakerContents, setBeakerContents] = useState<string[]>([])
+  const [beakerContents, setBeakerContents] = useState<SelectedElementWithMolecules[]>([])
   const [beakerColor, setBeakerColor] = useState('#e0f2fe')
   const [reactionResult, setReactionResult] = useState<ReactionResult | null>(null)
   const [isReacting, setIsReacting] = useState(false)
@@ -38,9 +43,14 @@ export default function PlayModePage() {
   const [selectedElements, setSelectedElements] = useState<string[]>([])
   
   // Undo/Redo functionality
-  const [history, setHistory] = useState<string[][]>([[]]) // Start with empty state
+  const [history, setHistory] = useState<SelectedElementWithMolecules[][]>([[]]) // Start with empty state
   const [historyIndex, setHistoryIndex] = useState(0)
   const [reactionHistory, setReactionHistory] = useState<ReactionResult[]>([])
+
+  // Molecule selection modal
+  const [showMoleculeModal, setShowMoleculeModal] = useState(false)
+  const [selectedElementForMolecules, setSelectedElementForMolecules] = useState<string | null>(null)
+  const [tempMoleculeCount, setTempMoleculeCount] = useState(1)
 
   // Fetch elements on component mount
   useEffect(() => {
@@ -59,7 +69,7 @@ export default function PlayModePage() {
     }
   }
 
-  const saveToHistory = (contents: string[]) => {
+  const saveToHistory = (contents: SelectedElementWithMolecules[]) => {
     console.log('Saving to history:', contents)
     
     // If we're not at the end of history, truncate future history
@@ -83,7 +93,7 @@ export default function PlayModePage() {
   const handleReactButton = async () => {
     console.log('=== REACT BUTTON CLICKED ===')
     console.log('Elements to send to Gemini:', beakerContents)
-    console.log('Order sequence:', beakerContents.map((element, index) => `${index + 1}. ${element}`))
+    console.log('Order sequence:', beakerContents.map((element, index) => `${index + 1}. ${element.element} (${element.molecules} molecules)`))
     
     if (beakerContents.length < 1) {
       alert('Please add at least 1 element to create a reaction!')
@@ -92,7 +102,7 @@ export default function PlayModePage() {
     await predictReaction(beakerContents)
   }
 
-  const predictReaction = async (contents: string[]) => {
+  const predictReaction = async (contents: SelectedElementWithMolecules[]) => {
     setIsReacting(true)
     try {
       const response = await fetch('/api/reactions/predict', {
@@ -103,7 +113,7 @@ export default function PlayModePage() {
         body: JSON.stringify({
           elements: contents,
           mode: 'play',
-          title: `Play Mode: ${contents.join(' + ')}`
+          title: `Play Mode: ${contents.map(el => `${el.molecules}${el.element}`).join(' + ')}`
         }),
       })
 
@@ -203,14 +213,81 @@ export default function PlayModePage() {
     setSelectedElements([])
   }
 
+  const selectElementForMolecules = (elementName: string) => {
+    setSelectedElementForMolecules(elementName)
+    setTempMoleculeCount(1)
+    setShowMoleculeModal(true)
+  }
+
+  const addElementWithMolecules = () => {
+    if (selectedElementForMolecules && tempMoleculeCount > 0) {
+      saveToHistory(beakerContents)
+      
+      // Check if element already exists in beaker
+      const existingIndex = beakerContents.findIndex(item => item.element === selectedElementForMolecules)
+      
+      if (existingIndex >= 0) {
+        // Update existing element's molecule count
+        const newContents = [...beakerContents]
+        newContents[existingIndex] = {
+          element: selectedElementForMolecules,
+          molecules: tempMoleculeCount
+        }
+        setBeakerContents(newContents)
+      } else {
+        // Add new element
+        const newContents = [...beakerContents, {
+          element: selectedElementForMolecules,
+          molecules: tempMoleculeCount
+        }]
+        setBeakerContents(newContents)
+      }
+      
+      setShowMoleculeModal(false)
+      setSelectedElementForMolecules(null)
+      setShowResult(false)
+      setReactionResult(null)
+      setBeakerColor('#e0f2fe')
+    }
+  }
+
+  const removeElementFromBeaker = (elementName: string) => {
+    saveToHistory(beakerContents)
+    const newContents = beakerContents.filter(item => item.element !== elementName)
+    setBeakerContents(newContents)
+    setShowResult(false)
+    setReactionResult(null)
+    setBeakerColor('#e0f2fe')
+  }
+
+  const updateElementMolecules = (elementName: string, newMolecules: number) => {
+    if (newMolecules > 0) {
+      saveToHistory(beakerContents)
+      const newContents = beakerContents.map(item => 
+        item.element === elementName 
+          ? { ...item, molecules: newMolecules }
+          : item
+      )
+      setBeakerContents(newContents)
+      setShowResult(false)
+      setReactionResult(null)
+      setBeakerColor('#e0f2fe')
+    }
+  }
+
   const performRandomReaction = async () => {
     const randomElements = getRandomElements()
     if (randomElements.length >= 2) {
-      const elementNames = randomElements.map(el => el.name)
+      const elementSpecs = randomElements.map(el => ({
+        element: el.name,
+        molecules: 1
+      }))
       
       // Save current state and add random elements to existing contents
       saveToHistory(beakerContents)
-      const newContents = [...beakerContents, ...elementNames.filter(name => !beakerContents.includes(name))]
+      const existingElements = beakerContents.map(item => item.element)
+      const newElements = elementSpecs.filter(spec => !existingElements.includes(spec.element))
+      const newContents = [...beakerContents, ...newElements]
       setBeakerContents(newContents)
       
       await predictReaction(newContents)
@@ -299,7 +376,7 @@ export default function PlayModePage() {
                   {elements.map((element) => (
                     <div key={element.symbol} className="flex justify-center">
                       <div
-                        onClick={() => toggleElementSelection(element.name)}
+                        onClick={() => selectElementForMolecules(element.name)}
                         className={`cursor-pointer transform transition-all duration-200 hover:scale-105 ${
                           selectedElements.includes(element.name) 
                             ? 'ring-2 ring-green-500 ring-offset-2' 
@@ -376,20 +453,34 @@ export default function PlayModePage() {
                       <div className="text-sm text-black">Total: {beakerContents.length}</div>
                     </div>
                     <div className="flex flex-wrap gap-3 mb-3">
-                      {beakerContents.map((element, index) => (
+                      {beakerContents.map((elementSpec, index) => (
                         <div
-                          key={`${element}-${index}`}
+                          key={`${elementSpec.element}-${index}`}
                           className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-2 rounded-full text-sm font-medium border border-blue-200 mb-1"
                         >
                           <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 font-bold">
                             {index + 1}
                           </span>
-                          {element}
+                          <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={elementSpec.molecules}
+                            onChange={(e) => updateElementMolecules(elementSpec.element, parseInt(e.target.value) || 1)}
+                            className="w-8 text-center bg-transparent border-none outline-none text-blue-800 font-medium"
+                          />
+                          <span>×{elementSpec.element}</span>
+                          <button
+                            onClick={() => removeElementFromBeaker(elementSpec.element)}
+                            className="ml-2 text-red-600 hover:text-red-800 font-bold"
+                          >
+                            ×
+                          </button>
                         </div>
                       ))}
                     </div>
                     <div className="text-sm text-gray-600 bg-white/60 px-3 py-1 rounded border">
-                      <span className="font-medium">Reaction sequence:</span> {beakerContents.join(' + ')}
+                      <span className="font-medium">Reaction sequence:</span> {beakerContents.map(el => `${el.molecules}${el.element}`).join(' + ')}
                     </div>
                   </div>
                 )}
@@ -406,7 +497,7 @@ export default function PlayModePage() {
                     <div className="text-center">
                       <Beaker
                         id="main-beaker"
-                        contents={beakerContents}
+                        contents={beakerContents.map(el => `${el.molecules}×${el.element}`)}
                         color={beakerColor}
                         onDrop={handleElementDrop}
                         size="large"
@@ -548,6 +639,56 @@ export default function PlayModePage() {
           </div>
         </div>
       </div>
+
+      {/* Molecule Selection Modal */}
+      {showMoleculeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-xl p-6 max-w-md w-full mx-4"
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Select Molecules for {selectedElementForMolecules}
+            </h3>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Number of Molecules
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={tempMoleculeCount}
+                onChange={(e) => setTempMoleculeCount(parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Choose between 1-10 molecules
+              </p>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowMoleculeModal(false)
+                  setSelectedElementForMolecules(null)
+                }}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addElementWithMolecules}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Add to Beaker
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }
