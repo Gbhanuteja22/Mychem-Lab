@@ -7,6 +7,7 @@ import { FlaskConical, Home, Lightbulb, Zap, RotateCcw, Save } from 'lucide-reac
 import Link from 'next/link'
 import Element from '@/components/lab/Element'
 import Beaker from '@/components/lab/Beaker'
+import SaveExperimentDialog from '@/components/lab/SaveExperimentDialog'
 
 interface ElementData {
   symbol: string
@@ -49,9 +50,35 @@ export default function PlayModePage() {
   const [selectedElementForMolecules, setSelectedElementForMolecules] = useState<string | null>(null)
   const [tempMoleculeCount, setTempMoleculeCount] = useState(1)
 
+  // Save dialog state
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+
   // Fetch elements on component mount
   useEffect(() => {
     fetchElements()
+    
+    // Check if we're editing an existing experiment
+    const editExperiment = localStorage.getItem('editExperiment')
+    if (editExperiment) {
+      try {
+        const experiment = JSON.parse(editExperiment)
+        if (experiment.isEditing && experiment.mode === 'play') {
+          // Load experiment data
+          setBeakerContents(experiment.elements.map((el: string) => ({
+            element: el.includes('×') ? el.split('×')[1] : el,
+            molecules: el.includes('×') ? parseInt(el.split('×')[0]) : 1
+          })))
+          setReactionResult(experiment.result)
+          setShowResult(true)
+          
+          // Clear the localStorage
+          localStorage.removeItem('editExperiment')
+        }
+      } catch (error) {
+        console.error('Error loading experiment for editing:', error)
+        localStorage.removeItem('editExperiment')
+      }
+    }
   }, [])
 
   const fetchElements = async () => {
@@ -126,6 +153,31 @@ export default function PlayModePage() {
     setShowResult(false)
     
     console.log('Workbench completely cleared (Play)')
+  }
+
+  const handleSaveExperiment = async (title: string, description?: string) => {
+    if (!reactionResult) {
+      throw new Error('No reaction result to save')
+    }
+
+    const response = await fetch('/api/experiments/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        mode: 'play',
+        title,
+        description,
+        elements: beakerContents.map(spec => `${spec.molecules}×${spec.element}`),
+        result: reactionResult
+      })
+    })
+
+    const data = await response.json()
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to save experiment')
+    }
   }
 
   const getRandomElements = () => {
@@ -549,32 +601,7 @@ export default function PlayModePage() {
                     {/* Save Result Button */}
                     <div className="mt-6 flex justify-end">
                       <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch('/api/experiments/save', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                              },
-                              body: JSON.stringify({
-                                mode: 'play',
-                                title: `Play Mode: ${beakerContents.map(el => `${el.molecules}×${el.element}`).join(' + ')}`,
-                                elements: beakerContents,
-                                result: reactionResult
-                              }),
-                            })
-                            
-                            const data = await response.json()
-                            if (data.success) {
-                              alert('Reaction saved to your lab journal!')
-                            } else {
-                              alert('Failed to save reaction: ' + (data.error || 'Unknown error'))
-                            }
-                          } catch (error) {
-                            console.error('Error saving reaction:', error)
-                            alert('Failed to save reaction to journal')
-                          }
-                        }}
+                        onClick={() => setShowSaveDialog(true)}
                         className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                       >
                         <Save className="h-4 w-4" />
@@ -638,6 +665,15 @@ export default function PlayModePage() {
           </motion.div>
         </div>
       )}
+      
+      {/* Save Experiment Dialog */}
+      <SaveExperimentDialog
+        isOpen={showSaveDialog}
+        onClose={() => setShowSaveDialog(false)}
+        onSave={handleSaveExperiment}
+        mode="play"
+        defaultName={`Play-${beakerContents.map(el => `${el.molecules}x${el.element}`).join('-')}`}
+      />
     </div>
   )
 }

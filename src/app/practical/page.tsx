@@ -7,6 +7,7 @@ import { FlaskConical, Home, Settings, Play, RotateCcw, Thermometer, Gauge, Drop
 import Link from 'next/link'
 import Element from '@/components/lab/Element'
 import Beaker from '@/components/lab/Beaker'
+import SaveExperimentDialog from '@/components/lab/SaveExperimentDialog'
 
 interface ElementSpec {
   element: string
@@ -56,9 +57,40 @@ export default function PracticalModePage() {
   const [volume, setVolume] = useState(100) // mL
   const [weight, setWeight] = useState(10) // grams
 
+  // Save dialog state
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+
   // Fetch elements on component mount
   useEffect(() => {
     fetchElements()
+    
+    // Check if we're editing an existing experiment
+    const editExperiment = localStorage.getItem('editExperiment')
+    if (editExperiment) {
+      try {
+        const experiment = JSON.parse(editExperiment)
+        if (experiment.isEditing && experiment.mode === 'practical') {
+          // Load experiment data
+          setBeakerContents(experiment.elements.map((el: string) => ({
+            element: el,
+            molecules: 1,
+            weight: 1
+          })))
+          setTemperature(experiment.parameters?.temperature || 25)
+          setPressure(experiment.parameters?.pressure || 1.0)
+          setVolume(experiment.parameters?.volume || 100)
+          setWeight(experiment.parameters?.weight || 10)
+          setReactionResult(experiment.result)
+          setShowResult(true)
+          
+          // Clear the localStorage
+          localStorage.removeItem('editExperiment')
+        }
+      } catch (error) {
+        console.error('Error loading experiment for editing:', error)
+        localStorage.removeItem('editExperiment')
+      }
+    }
   }, [])
 
   const fetchElements = async () => {
@@ -164,6 +196,35 @@ export default function PracticalModePage() {
     setShowResult(false)
     
     console.log('Workbench completely cleared (Practical)')
+  }
+
+  const handleSaveExperiment = async (title: string, description?: string) => {
+    if (!reactionResult) {
+      throw new Error('No reaction result to save')
+    }
+
+    const response = await fetch('/api/experiments/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        mode: 'practical',
+        title,
+        description,
+        elements: beakerContents.map(spec => `${spec.molecules}×${spec.element}`),
+        temperature,
+        pressure,
+        volume,
+        weight,
+        result: reactionResult
+      })
+    })
+
+    const data = await response.json()
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to save experiment')
+    }
   }
 
   const resetParameters = () => {
@@ -697,36 +758,7 @@ export default function PracticalModePage() {
 
                     <div className="flex justify-end">
                       <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch('/api/experiments/save', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                              },
-                              body: JSON.stringify({
-                                mode: 'practical',
-                                title: `Practical: ${beakerContents.map(spec => `${spec.molecules}×${spec.element}`).join(' + ')} at ${temperature}°C`,
-                                elements: beakerContents,
-                                temperature,
-                                pressure,
-                                volume,
-                                weight,
-                                result: reactionResult
-                              }),
-                            })
-                            
-                            const data = await response.json()
-                            if (data.success) {
-                              alert('Experiment results saved to lab journal!')
-                            } else {
-                              alert('Failed to save experiment: ' + (data.error || 'Unknown error'))
-                            }
-                          } catch (error) {
-                            console.error('Error saving experiment:', error)
-                            alert('Failed to save experiment to journal')
-                          }
-                        }}
+                        onClick={() => setShowSaveDialog(true)}
                         className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                       >
                         <Save className="h-4 w-4" />
@@ -740,6 +772,15 @@ export default function PracticalModePage() {
           </div>
         </div>
       </div>
+      
+      {/* Save Experiment Dialog */}
+      <SaveExperimentDialog
+        isOpen={showSaveDialog}
+        onClose={() => setShowSaveDialog(false)}
+        onSave={handleSaveExperiment}
+        mode="practical"
+        defaultName={`Practical-${beakerContents.map(spec => `${spec.molecules}x${spec.element}`).join('-')}-${temperature}C`}
+      />
     </div>
   )
 }

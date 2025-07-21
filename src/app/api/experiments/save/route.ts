@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     const {
       mode,
       title,
+      description,
       elements,
       temperature,
       pressure,
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
       userId,
       mode,
       title,
-      description: `${mode === 'play' ? 'Play Mode' : 'Practical Mode'} experiment: ${elements.map((el: any) => 
+      description: description || `${mode === 'play' ? 'Play Mode' : 'Practical Mode'} experiment: ${elements.map((el: any) => 
         typeof el === 'string' ? el : `${el.molecules}×${el.element}`
       ).join(' + ')}`,
       elements: elements.map((el: any) => typeof el === 'string' ? el : el.element),

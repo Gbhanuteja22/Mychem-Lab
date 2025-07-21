@@ -25,15 +25,6 @@ export default function HomePage() {
               </button>
             </SignUpButton>
           </SignedOut>
-          <SignedIn>
-            <Link 
-              href="/dashboard"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-            >
-              <span>Enter Lab</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </SignedIn>
         </div>
       </nav>
 
@@ -63,25 +54,47 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <SignedOut>
                 <SignUpButton mode="modal">
-                  <button className="px-8 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-lg font-semibold flex items-center justify-center space-x-2">
-                    <Beaker className="h-5 w-5" />
+                  <button className="relative px-8 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-lg font-semibold flex items-center justify-center space-x-3 smoke-effect group">
+                    <div className="relative">
+                      <FlaskConical className="h-7 w-7" />
+                      <div className="smoke-particle-1"></div>
+                      <div className="smoke-particle-2"></div>
+                      <div className="smoke-particle-3"></div>
+                      <div className="smoke-particle-4"></div>
+                      <div className="smoke-particle-5"></div>
+                      <div className="smoke-particle-6"></div>
+                      <div className="smoke-particle-7"></div>
+                      <div className="smoke-particle-8"></div>
+                      <div className="smoke-particle-9"></div>
+                      <div className="smoke-particle-10"></div>
+                    </div>
                     <span>Start Experimenting</span>
+                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </SignUpButton>
               </SignedOut>
               <SignedIn>
                 <Link 
                   href="/dashboard"
-                  className="px-8 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-lg font-semibold flex items-center justify-center space-x-2"
+                  className="relative px-8 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-lg font-semibold flex items-center justify-center space-x-3 smoke-effect group"
                 >
-                  <Beaker className="h-5 w-5" />
-                  <span>Continue to Lab</span>
+                  <div className="relative">
+                    <FlaskConical className="h-7 w-7" />
+                    <div className="smoke-particle-1"></div>
+                    <div className="smoke-particle-2"></div>
+                    <div className="smoke-particle-3"></div>
+                    <div className="smoke-particle-4"></div>
+                    <div className="smoke-particle-5"></div>
+                    <div className="smoke-particle-6"></div>
+                    <div className="smoke-particle-7"></div>
+                    <div className="smoke-particle-8"></div>
+                    <div className="smoke-particle-9"></div>
+                    <div className="smoke-particle-10"></div>
+                  </div>
+                  <span>Enter Lab</span>
+                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </SignedIn>
-              
-              <button className="px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:border-gray-400 transition-colors text-lg font-semibold">
-                Watch Demo
-              </button>
             </div>
           </div>
         </div>
