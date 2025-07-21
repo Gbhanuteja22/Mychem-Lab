@@ -697,8 +697,35 @@ export default function PracticalModePage() {
 
                     <div className="flex justify-end">
                       <button
-                        onClick={() => {
-                          alert('Experiment results saved to lab journal!')
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/experiments/save', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                mode: 'practical',
+                                title: `Practical: ${beakerContents.map(spec => `${spec.molecules}×${spec.element}`).join(' + ')} at ${temperature}°C`,
+                                elements: beakerContents,
+                                temperature,
+                                pressure,
+                                volume,
+                                weight,
+                                result: reactionResult
+                              }),
+                            })
+                            
+                            const data = await response.json()
+                            if (data.success) {
+                              alert('Experiment results saved to lab journal!')
+                            } else {
+                              alert('Failed to save experiment: ' + (data.error || 'Unknown error'))
+                            }
+                          } catch (error) {
+                            console.error('Error saving experiment:', error)
+                            alert('Failed to save experiment to journal')
+                          }
                         }}
                         className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                       >

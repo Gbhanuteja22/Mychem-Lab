@@ -133,14 +133,14 @@ export default function DashboardPage() {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="grid md:grid-cols-3 gap-6"
         >
-          <Link href="/experiments" className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-blue-100 hover:shadow-xl transition-all group">
+          <Link href="/history" className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-blue-100 hover:shadow-xl transition-all group">
             <div className="flex items-center space-x-4">
               <div className="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                 <History className="h-6 w-6 text-blue-600" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Experiment History</h3>
-                <p className="text-gray-600">View your past experiments</p>
+                <p className="text-gray-600">View your saved experiments</p>
               </div>
             </div>
           </Link>

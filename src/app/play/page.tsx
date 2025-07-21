@@ -549,9 +549,31 @@ export default function PlayModePage() {
                     {/* Save Result Button */}
                     <div className="mt-6 flex justify-end">
                       <button
-                        onClick={() => {
-                          // You can implement save functionality here
-                          alert('Reaction saved to your lab journal!')
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/experiments/save', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                mode: 'play',
+                                title: `Play Mode: ${beakerContents.map(el => `${el.molecules}×${el.element}`).join(' + ')}`,
+                                elements: beakerContents,
+                                result: reactionResult
+                              }),
+                            })
+                            
+                            const data = await response.json()
+                            if (data.success) {
+                              alert('Reaction saved to your lab journal!')
+                            } else {
+                              alert('Failed to save reaction: ' + (data.error || 'Unknown error'))
+                            }
+                          } catch (error) {
+                            console.error('Error saving reaction:', error)
+                            alert('Failed to save reaction to journal')
+                          }
                         }}
                         className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                       >
