@@ -42,9 +42,6 @@ export default function PlayModePage() {
   // Element selection for container
   const [selectedElements, setSelectedElements] = useState<string[]>([])
   
-  // Undo/Redo functionality
-  const [history, setHistory] = useState<SelectedElementWithMolecules[][]>([[]]) // Start with empty state
-  const [historyIndex, setHistoryIndex] = useState(0)
   const [reactionHistory, setReactionHistory] = useState<ReactionResult[]>([])
 
   // Molecule selection modal
@@ -66,22 +63,6 @@ export default function PlayModePage() {
       }
     } catch (error) {
       console.error('Error fetching elements:', error)
-    }
-  }
-
-  const saveToHistory = (contents: SelectedElementWithMolecules[]) => {
-    console.log('Saving to history:', contents)
-    
-    // If we're not at the end of history, truncate future history
-    const truncatedHistory = history.slice(0, historyIndex + 1)
-    
-    // Only save if the new state is different from current
-    const lastState = truncatedHistory[truncatedHistory.length - 1]
-    if (truncatedHistory.length === 0 || JSON.stringify(contents) !== JSON.stringify(lastState)) {
-      const newHistory = [...truncatedHistory, [...contents]]
-      setHistory(newHistory)
-      setHistoryIndex(newHistory.length - 1)
-      console.log('History updated:', newHistory, 'Index:', newHistory.length - 1)
     }
   }
 
@@ -135,36 +116,6 @@ export default function PlayModePage() {
     }
   }
 
-  const undo = () => {
-    console.log('Undo clicked - historyIndex:', historyIndex, 'history length:', history.length)
-    
-    if (history.length > 1 && historyIndex > 0) {
-      const newIndex = historyIndex - 1
-      const previousState = history[newIndex]
-      setHistoryIndex(newIndex)
-      setBeakerContents([...previousState])
-      setShowResult(false)
-      setReactionResult(null)
-      setBeakerColor('#e0f2fe')
-      console.log('Undo applied - new index:', newIndex, 'contents:', previousState)
-    }
-  }
-
-  const redo = () => {
-    console.log('Redo clicked - historyIndex:', historyIndex, 'history length:', history.length)
-    
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1
-      const nextState = history[newIndex]
-      setHistoryIndex(newIndex)
-      setBeakerContents([...nextState])
-      setShowResult(false)
-      setReactionResult(null)
-      setBeakerColor('#e0f2fe')
-      console.log('Redo applied - new index:', newIndex, 'contents:', nextState)
-    }
-  }
-
   const clearBeaker = () => {
     console.log('Clear workbench clicked (Play)')
     
@@ -174,11 +125,7 @@ export default function PlayModePage() {
     setReactionResult(null)
     setShowResult(false)
     
-    // Reset undo/redo history completely
-    setHistory([[]])
-    setHistoryIndex(0)
-    
-    console.log('Workbench completely cleared and history reset (Play)')
+    console.log('Workbench completely cleared (Play)')
   }
 
   const getRandomElements = () => {
@@ -199,8 +146,12 @@ export default function PlayModePage() {
   const addSelectedElementsToBeaker = () => {
     if (selectedElements.length === 0) return
     
-    saveToHistory(beakerContents)
-    const newContents = [...beakerContents, ...selectedElements]
+    const newElementsWithMolecules = selectedElements.map(element => ({
+      element,
+      molecules: 1
+    }))
+    
+    const newContents = [...beakerContents, ...newElementsWithMolecules]
     setBeakerContents(newContents)
     setSelectedElements([])
     setShowResult(false)
@@ -221,8 +172,6 @@ export default function PlayModePage() {
 
   const addElementWithMolecules = () => {
     if (selectedElementForMolecules && tempMoleculeCount > 0) {
-      saveToHistory(beakerContents)
-      
       // Check if element already exists in beaker
       const existingIndex = beakerContents.findIndex(item => item.element === selectedElementForMolecules)
       
@@ -252,7 +201,6 @@ export default function PlayModePage() {
   }
 
   const removeElementFromBeaker = (elementName: string) => {
-    saveToHistory(beakerContents)
     const newContents = beakerContents.filter(item => item.element !== elementName)
     setBeakerContents(newContents)
     setShowResult(false)
@@ -262,7 +210,6 @@ export default function PlayModePage() {
 
   const updateElementMolecules = (elementName: string, newMolecules: number) => {
     if (newMolecules > 0) {
-      saveToHistory(beakerContents)
       const newContents = beakerContents.map(item => 
         item.element === elementName 
           ? { ...item, molecules: newMolecules }
@@ -283,8 +230,7 @@ export default function PlayModePage() {
         molecules: 1
       }))
       
-      // Save current state and add random elements to existing contents
-      saveToHistory(beakerContents)
+      // Add random elements to existing contents
       const existingElements = beakerContents.map(item => item.element)
       const newElements = elementSpecs.filter(spec => !existingElements.includes(spec.element))
       const newContents = [...beakerContents, ...newElements]
@@ -405,25 +351,6 @@ export default function PlayModePage() {
                   
                   {/* Control Buttons */}
                   <div className="flex items-center space-x-3">
-                    {/* Undo/Redo Buttons */}
-                    <button
-                      onClick={undo}
-                      disabled={history.length <= 1 || historyIndex <= 0}
-                      className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                      <span>Undo</span>
-                    </button>
-                    
-                    <button
-                      onClick={redo}
-                      disabled={historyIndex >= history.length - 1}
-                      className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <RotateCcw className="h-4 w-4 scale-x-[-1]" />
-                      <span>Redo</span>
-                    </button>
-
                     {/* React Button */}
                     <button
                       onClick={handleReactButton}
@@ -489,7 +416,7 @@ export default function PlayModePage() {
                 <div className="min-h-64 bg-gradient-to-b from-blue-50 to-blue-100 rounded-xl p-8 border-2 border-dashed border-blue-300">
                   {beakerContents.length === 0 && (
                     <div className="text-center mb-4 p-3 bg-blue-100/60 rounded-lg border border-blue-300">
-                      <p className="text-blue-800 font-medium">💡 Tip: Drag multiple elements to the beaker, then click React!</p>
+                      <p className="text-blue-800 font-medium">💡 Tip: Select multiple elements to the beaker, then click React!</p>
                       <p className="text-sm text-blue-600 mt-1">Build your chemical reaction by adding elements one by one</p>
                     </div>
                   )}

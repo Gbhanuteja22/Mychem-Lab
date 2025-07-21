@@ -48,9 +48,6 @@ export default function PracticalModePage() {
   const [selectedWeight, setSelectedWeight] = useState<number>(1)
   const [showElementSelector, setShowElementSelector] = useState(false)
 
-  // Undo/Redo functionality
-  const [history, setHistory] = useState<ElementSpec[][]>([[]]) // Start with empty state
-  const [historyIndex, setHistoryIndex] = useState(0)
   const [reactionHistory, setReactionHistory] = useState<ReactionResult[]>([])
 
   // Lab parameters
@@ -76,22 +73,6 @@ export default function PracticalModePage() {
     }
   }
 
-  const saveToHistory = (contents: ElementSpec[]) => {
-    console.log('Saving to history (Practical):', contents)
-    
-    // If we're not at the end of history, truncate future history
-    const truncatedHistory = history.slice(0, historyIndex + 1)
-    
-    // Only save if the new state is different from current
-    const lastState = truncatedHistory[truncatedHistory.length - 1]
-    if (truncatedHistory.length === 0 || JSON.stringify(contents) !== JSON.stringify(lastState)) {
-      const newHistory = [...truncatedHistory, [...contents]]
-      setHistory(newHistory)
-      setHistoryIndex(newHistory.length - 1)
-      console.log('History updated (Practical):', newHistory, 'Index:', newHistory.length - 1)
-    }
-  }
-
   const handleElementDrop = (elementName: string) => {
     // Remove drag functionality - this function is no longer used
     console.log('Drag functionality disabled')
@@ -111,7 +92,6 @@ export default function PracticalModePage() {
       weight: selectedWeight
     }
     
-    saveToHistory(beakerContents)
     const newContents = [...beakerContents, newElement]
     setBeakerContents(newContents)
     
@@ -125,18 +105,6 @@ export default function PracticalModePage() {
     
     console.log('Element added to beaker:', newElement)
     console.log('=== ADD ELEMENT COMPLETE (Practical) ===')
-  }
-
-  const removeLastElement = () => {
-    if (beakerContents.length === 0) return
-    
-    saveToHistory(beakerContents)
-    const newContents = beakerContents.slice(0, -1)
-    setBeakerContents(newContents)
-    setShowResult(false)
-    setReactionResult(null)
-    
-    console.log('Removed last element from beaker')
   }
 
   const runExperiment = async () => {
@@ -186,36 +154,6 @@ export default function PracticalModePage() {
     }
   }
 
-  const undo = () => {
-    console.log('Undo clicked (Practical) - historyIndex:', historyIndex, 'history length:', history.length)
-    
-    if (history.length > 1 && historyIndex > 0) {
-      const newIndex = historyIndex - 1
-      const previousState = history[newIndex]
-      setHistoryIndex(newIndex)
-      setBeakerContents([...previousState])
-      setShowResult(false)
-      setReactionResult(null)
-      setBeakerColor('#e0f2fe')
-      console.log('Undo applied (Practical) - new index:', newIndex, 'contents:', previousState)
-    }
-  }
-
-  const redo = () => {
-    console.log('Redo clicked (Practical) - historyIndex:', historyIndex, 'history length:', history.length)
-    
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1
-      const nextState = history[newIndex]
-      setHistoryIndex(newIndex)
-      setBeakerContents([...nextState])
-      setShowResult(false)
-      setReactionResult(null)
-      setBeakerColor('#e0f2fe')
-      console.log('Redo applied (Practical) - new index:', newIndex, 'contents:', nextState)
-    }
-  }
-
   const clearBeaker = () => {
     console.log('Clear workbench clicked (Practical)')
     
@@ -225,11 +163,7 @@ export default function PracticalModePage() {
     setReactionResult(null)
     setShowResult(false)
     
-    // Reset undo/redo history completely
-    setHistory([[]])
-    setHistoryIndex(0)
-    
-    console.log('Workbench completely cleared and history reset (Practical)')
+    console.log('Workbench completely cleared (Practical)')
   }
 
   const resetParameters = () => {
@@ -496,42 +430,6 @@ export default function PracticalModePage() {
                   
                   <div className="flex items-center space-x-3">
                     <button
-                      onClick={undo}
-                      disabled={history.length <= 1 || historyIndex <= 0}
-                      className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                      <span>Undo</span>
-                    </button>
-                    
-                    <button
-                      onClick={redo}
-                      disabled={historyIndex >= history.length - 1}
-                      className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <RotateCcw className="h-4 w-4 scale-x-[-1]" />
-                      <span>Redo</span>
-                    </button>
-
-                    <button
-                      onClick={removeLastElement}
-                      disabled={beakerContents.length === 0}
-                      className="flex items-center space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                      <span>Remove Last</span>
-                    </button>
-
-                    <button
-                      onClick={runExperiment}
-                      disabled={beakerContents.length < 1 || isReacting}
-                      className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Play className="h-4 w-4" />
-                      <span>{isReacting ? 'Running...' : 'React'}</span>
-                    </button>
-                    
-                    <button
                       onClick={clearBeaker}
                       className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                     >
@@ -577,7 +475,6 @@ export default function PracticalModePage() {
                           </div>
                           <button
                             onClick={() => {
-                              saveToHistory(beakerContents)
                               const newContents = beakerContents.filter((_, i) => i !== index)
                               setBeakerContents(newContents)
                               setShowResult(false)
