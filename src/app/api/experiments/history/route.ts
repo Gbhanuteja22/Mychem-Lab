@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     const totalCount = await Experiment.countDocuments(query)
 
     // Format the response
-    const formattedExperiments = experiments.map(exp => ({
+    const formattedExperiments = experiments.map((exp: any) => ({
       id: exp._id.toString(),
       mode: exp.mode,
       title: exp.title,

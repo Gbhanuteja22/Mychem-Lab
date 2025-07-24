@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { motion } from 'framer-motion'
 import { FlaskConical, Beaker, Atom, History, BookOpen, Settings } from 'lucide-react'
@@ -7,20 +8,49 @@ import Link from 'next/link'
 
 export default function DashboardPage() {
   const { user } = useUser()
+  const [isDarkTheme, setIsDarkTheme] = useState(false)
+
+  // Check theme on mount and listen for changes
+  useEffect(() => {
+    const checkTheme = () => {
+      const theme = document.documentElement.getAttribute('data-theme')
+      setIsDarkTheme(theme === 'dark')
+    }
+    
+    checkTheme()
+    
+    const observer = new MutationObserver(checkTheme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    })
+    
+    return () => observer.disconnect()
+  }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className={`min-h-screen ${
+      isDarkTheme 
+        ? 'bg-gradient-to-br from-slate-900 to-slate-800' 
+        : 'bg-gradient-to-br from-blue-50 to-indigo-100'
+    }`}>
       {/* Navigation */}
-      <nav className="bg-white/80 backdrop-blur-md border-b border-blue-200">
+      <nav className={`backdrop-blur-md border-b ${
+        isDarkTheme 
+          ? 'bg-slate-900/80 border-slate-700' 
+          : 'bg-white/80 border-blue-200'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
               <FlaskConical className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">AI Chemistry Lab</span>
+              <span className={`text-xl font-bold ${
+                isDarkTheme ? 'text-white' : 'text-black'
+              }`}>AI Chemistry Lab</span>
             </div>
             
             <div className="flex items-center space-x-4">
-              <span className="text-gray-600">Welcome, {user?.firstName || 'Scientist'}!</span>
+              <span className={isDarkTheme ? 'text-slate-300' : 'text-black'}>Welcome, {user?.firstName || 'Scientist'}!</span>
               <UserButton />
             </div>
           </div>
@@ -35,10 +65,14 @@ export default function DashboardPage() {
           transition={{ duration: 0.8 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+          <h1 className={`text-4xl md:text-5xl font-bold mb-4 ${
+            isDarkTheme ? 'text-white' : 'text-black'
+          }`}>
             Welcome to Your Lab
           </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className={`text-xl max-w-3xl mx-auto ${
+            isDarkTheme ? 'text-slate-300' : 'text-black'
+          }`}>
             Choose your experimentation mode and start exploring the fascinating world of chemistry
           </p>
         </motion.div>

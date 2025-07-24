@@ -7,9 +7,15 @@ import { Save, X, AlertCircle } from 'lucide-react'
 interface SaveExperimentDialogProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (name: string, description?: string) => Promise<void>
+  onSave: (name: string, description?: string, options?: SaveOptions) => Promise<void>
   mode: 'play' | 'practical'
   defaultName?: string
+}
+
+interface SaveOptions {
+  includeStructure: boolean
+  includeParameters: boolean
+  includeAnalysis: boolean
 }
 
 export default function SaveExperimentDialog({
@@ -23,6 +29,12 @@ export default function SaveExperimentDialog({
   const [description, setDescription] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [saveMode, setSaveMode] = useState<'full' | 'basic'>('full')
+  const [saveOptions, setSaveOptions] = useState<SaveOptions>({
+    includeStructure: true,
+    includeParameters: true,
+    includeAnalysis: true
+  })
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -34,10 +46,16 @@ export default function SaveExperimentDialog({
     setError('')
     
     try {
-      await onSave(name.trim(), description.trim() || undefined)
+      await onSave(name.trim(), description.trim() || undefined, saveOptions)
       onClose()
       setName('')
       setDescription('')
+      setSaveMode('full')
+      setSaveOptions({
+        includeStructure: true,
+        includeParameters: true,
+        includeAnalysis: true
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save experiment')
     } finally {
@@ -131,6 +149,97 @@ export default function SaveExperimentDialog({
                 <div className="text-xs text-black mt-1">
                   {description.length}/500 characters
                 </div>
+              </div>
+
+              {/* Save Options */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-3">
+                  Save Options
+                </label>
+                
+                {/* Save Mode Selection */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSaveMode('full')
+                      setSaveOptions({
+                        includeStructure: true,
+                        includeParameters: true,
+                        includeAnalysis: true
+                      })
+                    }}
+                    className={`p-3 rounded-lg border-2 transition-all text-left ${
+                      saveMode === 'full'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="font-medium text-black text-sm">Full Save</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      3D structure, parameters, and analysis
+                    </div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSaveMode('basic')
+                      setSaveOptions({
+                        includeStructure: false,
+                        includeParameters: true,
+                        includeAnalysis: false
+                      })
+                    }}
+                    className={`p-3 rounded-lg border-2 transition-all text-left ${
+                      saveMode === 'basic'
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="font-medium text-black text-sm">Basic Save</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      Elements and results only
+                    </div>
+                  </button>
+                </div>
+
+                {/* Custom Options (only shown for full save) */}
+                {saveMode === 'full' && (
+                  <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+                    <div className="text-xs font-medium text-gray-700 mb-2">Customize what to include:</div>
+                    
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={saveOptions.includeStructure}
+                        onChange={(e) => setSaveOptions(prev => ({ ...prev, includeStructure: e.target.checked }))}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-black">3D Molecular Structure</span>
+                    </label>
+                    
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={saveOptions.includeParameters}
+                        onChange={(e) => setSaveOptions(prev => ({ ...prev, includeParameters: e.target.checked }))}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-black">Lab Parameters (T, P, Volume)</span>
+                    </label>
+                    
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={saveOptions.includeAnalysis}
+                        onChange={(e) => setSaveOptions(prev => ({ ...prev, includeAnalysis: e.target.checked }))}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-black">Analysis & Predictions</span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* Error */}

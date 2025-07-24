@@ -58,6 +58,7 @@ export default function ExperimentHistoryPage() {
   const [selectedExperiment, setSelectedExperiment] = useState<ExperimentData | null>(null)
   const [copyDialogOpen, setCopyDialogOpen] = useState<ExperimentData | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState<ExperimentData | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     fetchExperiments()
@@ -150,24 +151,49 @@ export default function ExperimentHistoryPage() {
   }
 
   const handleDelete = async (experiment: ExperimentData) => {
+    if (isDeleting) return // Prevent multiple deletions
+    
+    setIsDeleting(true)
     try {
       const response = await fetch(`/api/experiments/${experiment.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        signal: AbortSignal.timeout(10000) // 10 second timeout
       })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
 
       const data = await response.json()
       
       if (data.success) {
-        // Remove from local state
+        // Remove from local state immediately for better UX
         setExperiments(prev => prev.filter(exp => exp.id !== experiment.id))
         setDeleteConfirmOpen(null)
-        alert('Experiment deleted successfully!')
+        // Use a more subtle notification
+        const notification = document.createElement('div')
+        notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50'
+        notification.textContent = 'Experiment deleted successfully!'
+        document.body.appendChild(notification)
+        setTimeout(() => {
+          document.body.removeChild(notification)
+        }, 3000)
       } else {
-        alert('Failed to delete experiment: ' + (data.error || 'Unknown error'))
+        throw new Error(data.error || 'Failed to delete experiment')
       }
     } catch (error) {
       console.error('Error deleting experiment:', error)
-      alert('Failed to delete experiment')
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          alert('Delete operation timed out. Please check your connection and try again.')
+        } else {
+          alert(`Failed to delete experiment: ${error.message}`)
+        }
+      } else {
+        alert('Failed to delete experiment. Please try again.')
+      }
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -564,15 +590,20 @@ export default function ExperimentHistoryPage() {
                 <div className="flex items-center justify-end space-x-3">
                   <button
                     onClick={() => setDeleteConfirmOpen(null)}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    disabled={isDeleting}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => handleDelete(deleteConfirmOpen)}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    disabled={isDeleting}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                   >
-                    Delete Experiment
+                    {isDeleting && (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    )}
+                    <span>{isDeleting ? 'Deleting...' : 'Delete Experiment'}</span>
                   </button>
                 </div>
               </div>

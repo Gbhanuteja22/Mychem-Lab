@@ -33,6 +33,10 @@ interface ReactionResult {
 }
 
 export default function PlayModePage() {
+  const [isDarkTheme, setIsDarkTheme] = useState(false)
+  const [settings, setSettings] = useState<any>({
+    preferences: { autoSave: true }
+  })
   const [elements, setElements] = useState<ElementData[]>([])
   const [beakerContents, setBeakerContents] = useState<SelectedElementWithMolecules[]>([])
   const [beakerColor, setBeakerColor] = useState('#e0f2fe')
@@ -52,6 +56,37 @@ export default function PlayModePage() {
 
   // Save dialog state
   const [showSaveDialog, setShowSaveDialog] = useState(false)
+
+  // Check theme on mount and listen for changes
+  useEffect(() => {
+    const checkTheme = () => {
+      const theme = document.documentElement.getAttribute('data-theme')
+      setIsDarkTheme(theme === 'dark')
+    }
+    
+    checkTheme()
+    
+    const observer = new MutationObserver(checkTheme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    })
+    
+    return () => observer.disconnect()
+  }, [])
+
+  // Load settings from localStorage
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('lab-settings')
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings)
+        setSettings(parsed)
+      } catch (error) {
+        console.error('Error parsing saved settings:', error)
+      }
+    }
+  }, [])
 
   // Fetch elements on component mount
   useEffect(() => {
@@ -131,8 +166,10 @@ export default function PlayModePage() {
         setBeakerColor(data.result.color || '#e0f2fe')
         setShowResult(true)
         
-        // Save to reaction history
-        setReactionHistory(prev => [...prev, data.result])
+        // Respect autoSave setting
+        if (settings.preferences?.autoSave) {
+          setReactionHistory(prev => [...prev, data.result])
+        }
       } else {
         console.error('Error predicting reaction:', data.error)
       }
@@ -155,9 +192,43 @@ export default function PlayModePage() {
     console.log('Workbench completely cleared (Play)')
   }
 
-  const handleSaveExperiment = async (title: string, description?: string) => {
+  const handleSaveExperiment = async (title: string, description?: string, options?: { includeStructure: boolean, includeParameters: boolean, includeAnalysis: boolean }) => {
     if (!reactionResult) {
       throw new Error('No reaction result to save')
+    }
+
+    // Prepare data based on save options
+    const experimentData: any = {
+      mode: 'play',
+      title,
+      description,
+      elements: beakerContents.map(spec => `${spec.molecules}×${spec.element}`),
+      result: reactionResult
+    }
+
+    // Note: Play mode doesn't have parameters like practical mode, but we include this for consistency
+    if (options?.includeParameters) {
+      experimentData.gameMode = 'play'
+      experimentData.elementsUsed = beakerContents.length
+    }
+
+    if (options?.includeStructure) {
+      // Include basic molecular structure data
+      experimentData.molecularStructure = {
+        atoms: beakerContents.map(spec => ({ element: spec.element, count: spec.molecules }))
+      }
+    }
+
+    if (options?.includeAnalysis) {
+      // Include analysis data
+      experimentData.analysis = {
+        reactionType: 'unknown',
+        energyChange: null,
+        colorChange: reactionResult.color || null,
+        phChange: null,
+        stateChange: reactionResult.state || null,
+        safetyWarnings: reactionResult.safetyWarnings || []
+      }
     }
 
     const response = await fetch('/api/experiments/save', {
@@ -165,13 +236,7 @@ export default function PlayModePage() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        mode: 'play',
-        title,
-        description,
-        elements: beakerContents.map(spec => `${spec.molecules}×${spec.element}`),
-        result: reactionResult
-      })
+      body: JSON.stringify(experimentData)
     })
 
     const data = await response.json()
@@ -370,12 +435,14 @@ export default function PlayModePage() {
                   )}
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                <div className={`grid grid-cols-3 gap-4 max-h-96 overflow-y-auto custom-scrollbar ${
+                  isDarkTheme ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'
+                }`}>
                   {elements.map((element) => (
                     <div key={element.symbol} className="flex justify-center">
                       <div
                         onClick={() => selectElementForMolecules(element.name)}
-                        className={`cursor-pointer transform transition-all duration-200 hover:scale-105 ${
+                        className={`cursor-pointer transform transition-all duration-200 hover:scale-105 w-full max-w-[80px] ${
                           selectedElements.includes(element.name) 
                             ? 'ring-2 ring-green-500 ring-offset-2' 
                             : ''

@@ -15,16 +15,18 @@ import {
   Save,
   RotateCcw,
   Eye,
+  Monitor,
   Sun,
   Moon
 } from 'lucide-react'
 import Link from 'next/link'
 
 interface UserSettings {
-  theme: 'light' | 'dark'
+  theme: 'light' | 'dark' | 'system'
   preferences: {
     defaultMode: 'play' | 'practical'
     autoSave: boolean
+    soundEffects: boolean
     animations: boolean
   }
   accessibility: {
@@ -41,6 +43,7 @@ export default function SettingsPage() {
     preferences: {
       defaultMode: 'play',
       autoSave: true,
+      soundEffects: true,
       animations: true
     },
     accessibility: {
@@ -69,7 +72,7 @@ export default function SettingsPage() {
 
   // Apply settings when they change
   useEffect(() => {
-    applySettingsWithoutSaving()
+    applySettings()
   }, [settings])
 
   const applyThemeSettings = () => {
@@ -84,7 +87,7 @@ export default function SettingsPage() {
     }
   }
 
-  const applySettingsWithoutSaving = () => {
+  const applySettings = () => {
     // Apply theme
     applyTheme(settings.theme)
     
@@ -108,18 +111,20 @@ export default function SettingsPage() {
     } else {
       document.body.classList.remove('large-text')
     }
-  }
 
-  const applySettings = () => {
-    applySettingsWithoutSaving()
-    
     // Save to localStorage
     localStorage.setItem('lab-settings', JSON.stringify(settings))
   }
 
-  const applyTheme = (theme: 'light' | 'dark') => {
+  const applyTheme = (theme: 'light' | 'dark' | 'system') => {
     const root = document.documentElement
-    root.setAttribute('data-theme', theme)
+    
+    if (theme === 'system') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      root.setAttribute('data-theme', prefersDark ? 'dark' : 'light')
+    } else {
+      root.setAttribute('data-theme', theme)
+    }
   }
 
   const updateSetting = (section: keyof UserSettings, key: string, value: any) => {
@@ -134,7 +139,7 @@ export default function SettingsPage() {
   }
 
   const saveSettings = () => {
-    applySettings()
+    localStorage.setItem('lab-settings', JSON.stringify(settings))
     setHasChanges(false)
     alert('Settings saved successfully!')
   }
@@ -145,6 +150,7 @@ export default function SettingsPage() {
       preferences: {
         defaultMode: 'play',
         autoSave: true,
+        soundEffects: true,
         animations: true
       },
       accessibility: {
@@ -153,7 +159,7 @@ export default function SettingsPage() {
       }
     }
     setSettings(defaultSettings)
-    applySettings()
+    localStorage.setItem('lab-settings', JSON.stringify(defaultSettings))
     setHasChanges(false)
     alert('Settings reset to defaults!')
   }
@@ -328,18 +334,17 @@ export default function SettingsPage() {
                   <div className="space-y-6">
                     <div>
                       <label className="block text-sm font-medium text-black mb-3">Theme</label>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-3 gap-3">
                         {[
                           { value: 'light', label: 'Light', icon: <Sun className="h-4 w-4" /> },
-                          { value: 'dark', label: 'Dark', icon: <Moon className="h-4 w-4" /> }
+                          { value: 'dark', label: 'Dark', icon: <Moon className="h-4 w-4" /> },
+                          { value: 'system', label: 'System', icon: <Monitor className="h-4 w-4" /> }
                         ].map((theme) => (
                           <button
                             key={theme.value}
                             onClick={() => {
-                              setSettings(prev => ({ ...prev, theme: theme.value as 'light' | 'dark' }))
+                              setSettings(prev => ({ ...prev, theme: theme.value as 'light' | 'dark' | 'system' }))
                               setHasChanges(true)
-                              // Immediately apply theme for preview
-                              applyTheme(theme.value as 'light' | 'dark')
                             }}
                             className={`flex items-center space-x-2 p-3 rounded-lg border transition-colors ${
                               settings.theme === theme.value
@@ -378,6 +383,17 @@ export default function SettingsPage() {
                       <ToggleSwitch
                         enabled={settings.preferences.autoSave}
                         onChange={(value) => updateSetting('preferences', 'autoSave', value)}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-medium text-black">Sound Effects</h4>
+                        <p className="text-sm text-gray-500">Play sounds for lab interactions</p>
+                      </div>
+                      <ToggleSwitch
+                        enabled={settings.preferences.soundEffects}
+                        onChange={(value) => updateSetting('preferences', 'soundEffects', value)}
                       />
                     </div>
 
@@ -450,8 +466,8 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              {/* Action Buttons - Only show for profile, appearance, preferences, and accessibility tabs */}
-              {hasChanges && activeTab !== 'data' && (
+              {/* Action Buttons */}
+              {hasChanges && (
                 <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-between">
                   <div className="flex space-x-3">
                     <button

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from '@clerk/nextjs'
 import { Geist, Geist_Mono } from "next/font/google";
+import FloatingLabAssistant from '@/components/lab/FloatingLabAssistant'
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,9 +28,14 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen`}
+          className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}
+          style={{ 
+            background: 'var(--background)', 
+            color: 'var(--foreground)' 
+          }}
         >
           {children}
+          <FloatingLabAssistant />
         </body>
       </html>
     </ClerkProvider>
